@@ -17,6 +17,7 @@ enum Key {
     Down,
     Left,
     Right,
+    Space,
     Char(char),
 }
 
@@ -289,12 +290,18 @@ impl Game {
         true
     }
 
+    fn drop_piece(&mut self) -> bool {
+        while self.move_piece(0, 1) {}
+        self.advance_piece()
+    }
+
     fn keypress(&mut self, key: Key) {
         match key {
             Key::Left => self.move_piece(-1, 0),
             Key::Right => self.move_piece(1, 0),
             Key::Down => self.advance_piece(),
             Key::Up => self.rotate_piece(Direction::Left),
+            Key::Space => self.drop_piece(),
             Key::Char('o') => panic!("Quitting!"),
             Key::Char('q') => self.rotate_piece(Direction::Left),
             Key::Char('e') => self.rotate_piece(Direction::Right),
@@ -314,6 +321,7 @@ fn get_input(stdin: &mut std::io::Stdin) -> Option<Key> {
                 Ok("a") => Some(Key::Left),
                 Ok("s") => Some(Key::Down),
                 Ok("d") => Some(Key::Right),
+                Ok(" ") => Some(Key::Space),
                 Ok(n) => Some(Key::Char(n.chars().next().unwrap())),
                 _ => None
             }
