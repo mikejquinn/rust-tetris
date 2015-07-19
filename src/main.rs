@@ -1,4 +1,5 @@
 extern crate libc;
+extern crate rand;
 
 mod util;
 mod display;
@@ -202,21 +203,76 @@ impl std::fmt::Display for Piece {
         write!(f, "Piece: {}", self.name)
     }
 }
+
+struct PieceBag {
+    pieces: Vec<Piece>
+}
+
+impl PieceBag {
+    fn new() -> PieceBag {
+        let mut p = PieceBag{
+            pieces: Vec::new()
+        };
+        p.fill_bag();
+        p
+    }
+
+    fn pop(&mut self) -> Piece {
+        let piece = self.pieces.remove(0);
+        if self.pieces.is_empty() {
+            self.fill_bag();
+        }
+        piece
+    }
+
+    fn peek(&self) -> &Piece {
+        &self.pieces[0]
+    }
+
+    fn fill_bag(&mut self) {
+        use rand::Rng;
+
+        let mut pieces: Vec<Piece> = vec![
+            Piece::new_o(),
+            Piece::new_l(),
+            Piece::new_j(),
+            Piece::new_t(),
+            Piece::new_s(),
+            Piece::new_z(),
+            Piece::new_i()
+        ];
+
+        let mut rng = rand::thread_rng();
+        while !pieces.is_empty() {
+            let i = rng.gen::<usize>() % pieces.len();
+            self.pieces.push(pieces.swap_remove(i));
+        }
+    }
+}
+
 struct Game {
     board: Board,
+    piece_bag: PieceBag,
     piece: Piece,
     piece_position: Point,
 }
 
 impl Game {
     fn new() -> Game {
-        Game {
+        let mut piece_bag = PieceBag::new();
+        let piece = piece_bag.pop();
+
+        let mut game = Game {
             board: Board{
                 cells: [[None; BOARD_WIDTH as usize]; BOARD_HEIGHT as usize]
             },
-            piece: Piece::new_t(),
+            piece_bag: piece_bag,
+            piece: piece,
             piece_position: Point{ x: 0, y: 0 }
-        }
+        };
+
+        game.place_new_piece();
+        game
     }
 
     fn render(&self, display: &mut Display) {
@@ -264,16 +320,15 @@ impl Game {
     }
 
     // Returns true if the new piece could be placed
-    fn place_new_piece(&mut self, piece: &Piece) -> bool {
+    fn place_new_piece(&mut self) -> bool {
         let origin = Point{
-            x: ((BOARD_WIDTH - (piece.shape.len() as u32)) / 2) as i32,
+            x: ((BOARD_WIDTH - (self.piece.shape.len() as u32)) / 2) as i32,
             y: 0,
         };
-        if self.board.collision_test(piece, origin) {
+        if self.board.collision_test(&self.piece, origin) {
             false
         } else {
             self.piece_position = origin;
-            self.piece = piece.clone();
             true
         }
     }
@@ -282,7 +337,9 @@ impl Game {
     fn advance_piece(&mut self) -> bool {
         if !self.move_piece(0, 1) {
             self.board.lock_piece(&self.piece, self.piece_position);
-            if !self.place_new_piece(&Piece::new_l()) {
+            self.piece = self.piece_bag.pop();
+
+            if !self.place_new_piece() {
                 return false;
             }
         }
