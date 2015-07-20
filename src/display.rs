@@ -6,7 +6,8 @@ const ESC: &'static str = "\x1b";
 #[derive(Debug)]
 struct Pixel {
     c: &'static str,
-    color: Color,
+    fg_color: Color,
+    bg_color: Color,
 }
 
 pub struct Display {
@@ -19,7 +20,7 @@ impl Display {
         for _ in 0..height {
             let mut row = Vec::with_capacity(width as usize);
             for _ in 0..width {
-                row.push(Pixel{ c: " ", color: Color::Black });
+                row.push(Pixel{ c: " ", fg_color: Color::Black, bg_color: Color::Black });
             }
             rows.push(row);
         }
@@ -34,15 +35,20 @@ impl Display {
         self.set_cursor_pos(0, 0);
 
         let mut writer = io::stdout();
-        let mut current_color = Color::Black;
+        let mut fg_color = Color::Black;
+        let mut bg_color = Color::Black;
 
         let mut y = 0;
 
         for row in &self.buffer {
             for pixel in row {
-                if pixel.color != current_color {
-                    current_color = pixel.color;
-                    self.set_color(pixel.color);
+                if pixel.fg_color != fg_color {
+                    fg_color = pixel.fg_color;
+                    self.set_fg_color(pixel.fg_color);
+                 }
+                if pixel.bg_color != bg_color {
+                    bg_color = pixel.bg_color;
+                    self.set_bg_color(pixel.bg_color);
                  }
 
                 assert!(writer.write_all(pixel.c.as_bytes()).is_ok());
@@ -54,11 +60,12 @@ impl Display {
         assert!(writer.flush().is_ok());
     }
 
-    pub fn set_pixel(&mut self, text: &'static str, x: u32, y: u32, color: Color) {
+    pub fn set_pixel(&mut self, text: &'static str, x: u32, y: u32, fg_color: Color, bg_color: Color) {
         let row = &mut self.buffer[y as usize];
         let cell = &mut row[x as usize];
         cell.c = text;
-        cell.color = color;
+        cell.fg_color = fg_color;
+        cell.bg_color = bg_color;
     }
 
     pub fn clear_screen(&self) {
@@ -71,7 +78,8 @@ impl Display {
         for row in 0..self.buffer.len() {
             for col in 0..self.buffer[row].len() {
                 self.buffer[row][col].c = " ";
-                self.buffer[row][col].color = Color::Black;
+                self.buffer[row][col].fg_color = Color::Black;
+                self.buffer[row][col].bg_color = Color::Black;
             }
         }
     }
@@ -88,20 +96,24 @@ impl Display {
         assert!(writer.write_all(text.as_bytes()).is_ok());
     }
 
-    fn set_color(&self, color: Color) {
-        self.print(&self.esc(self.get_color_code(color)));
+    fn set_fg_color(&self, color: Color) {
+        self.print(&self.esc(&format!("38;5;{}m", self.get_color_code(color))));
     }
 
-    fn get_color_code(&self, color: Color) -> &str {
+    fn set_bg_color(&self, color: Color) {
+        self.print(&self.esc(&format!("48;5;{}m", self.get_color_code(color))));
+    }
+
+    fn get_color_code(&self, color: Color) -> i32 {
         match color {
-            Color::Cyan => "36m",
-            Color::Yellow => "33m",
-            Color::Purple => "35m",
-            Color::Green => "32m",
-            Color::Red => "31m",
-            Color::Blue => "34m",
-            Color::Orange => "38;5;200m",
-            Color::Black => "30m"
+            Color::Cyan => 44,
+            Color::Yellow => 11,
+            Color::Purple => 90,
+            Color::Green => 2,
+            Color::Red => 9,
+            Color::Blue => 21,
+            Color::Orange => 202,
+            Color::Black => 0
         }
     }
 }

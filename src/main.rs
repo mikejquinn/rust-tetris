@@ -29,22 +29,26 @@ struct Point {
 }
 
 struct Board {
-    cells: [[Option<util::Color>; BOARD_WIDTH as usize]; BOARD_HEIGHT as usize],
+    cells: [[Option<Color>; BOARD_WIDTH as usize]; BOARD_HEIGHT as usize],
 }
 
 impl Board {
     pub fn render(&self, display: &mut Display) {
         for y in HIDDEN_ROWS..BOARD_HEIGHT {
-            display.set_pixel("|", 0, y, Color::Red);
-            display.set_pixel("|", BOARD_WIDTH * 2, y, Color::Red);
+            display.set_pixel("|", 0, y, Color::Red, Color::Black);
+            display.set_pixel("|", BOARD_WIDTH * 2 + 1, y, Color::Red, Color::Black);
         }
         for x in 0..(BOARD_WIDTH * 2 + 1) {
-            display.set_pixel("-", x, BOARD_HEIGHT, Color::Red);
+            display.set_pixel("-", x, BOARD_HEIGHT, Color::Red, Color::Black);
         }
         for row in 0..BOARD_HEIGHT {
             for col in 0..BOARD_WIDTH {
                 match self.cells[row as usize][col as usize] {
-                    Some(color) => display.set_pixel("*", 1 + (col * 2), row, color),
+                    Some(color) => {
+                        let c = 1 + (col * 2);
+                        display.set_pixel(" ", c, row, color, color);
+                        display.set_pixel(" ", c + 1, row, color, color);
+                    },
                     None => ()
                 }
             }
@@ -286,7 +290,8 @@ impl Game {
                 if self.piece.shape[y as usize][x as usize] != 0 {
                     let x = (1 + 2 * (self.piece_position.x + x)) as u32;
                     let y = (self.piece_position.y + y) as u32;
-                    display.set_pixel("*", x, y, self.piece.color);
+                    display.set_pixel(" ", x, y, self.piece.color, self.piece.color);
+                    display.set_pixel(" ", x + 1, y, self.piece.color, self.piece.color);
                 }
             }
         }
