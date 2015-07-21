@@ -279,17 +279,33 @@ impl Game {
         game
     }
 
+    fn find_dropped_origin(&self) -> Point {
+        let mut origin = self.piece_position;
+        while !self.board.collision_test(&self.piece, origin) {
+            origin.y += 1;
+        }
+        origin.y -= 1;
+        origin
+    }
+
     fn render(&self, display: &mut Display) {
         // Render the board
         self.board.render(display);
 
         let width = self.piece.shape.len() as i32;
+
+        // Render a ghost piece
+        let ghost_origin = self.find_dropped_origin();
+
         // Render the currently falling piece
-        for y in 0..width {
-            for x in 0..width {
-                if self.piece.shape[y as usize][x as usize] != 0 {
-                    let x = (1 + 2 * (self.piece_position.x + x)) as u32;
-                    let y = (self.piece_position.y + y) as u32;
+        for row in 0..width {
+            for col in 0..width {
+                if self.piece.shape[row as usize][col as usize] != 0 {
+                    let x = (1 + 2 * (self.piece_position.x + col)) as u32;
+                    let y = (self.piece_position.y + row) as u32;
+                    let ghost_y = (ghost_origin.y + row) as u32;
+                    display.set_pixel("*", x, ghost_y, self.piece.color, Color::Black);
+                    display.set_pixel("*", x + 1, ghost_y, self.piece.color, Color::Black);
                     display.set_pixel(" ", x, y, self.piece.color, self.piece.color);
                     display.set_pixel(" ", x + 1, y, self.piece.color, self.piece.color);
                 }
