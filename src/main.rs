@@ -19,6 +19,7 @@ enum Key {
     Left,
     Right,
     Space,
+    CtrlC,
     Char(char),
 }
 
@@ -380,10 +381,9 @@ impl Game {
             Key::Down => self.advance_piece(),
             Key::Up => self.rotate_piece(Direction::Left),
             Key::Space => self.drop_piece(),
-            Key::Char('o') => panic!("Quitting!"),
             Key::Char('q') => self.rotate_piece(Direction::Left),
             Key::Char('e') => self.rotate_piece(Direction::Right),
-            Key::Char(_) => false,
+            _ => false,
         };
     }
 }
@@ -400,6 +400,22 @@ fn get_input(stdin: &mut std::io::Stdin) -> Option<Key> {
                 Ok("s") => Some(Key::Down),
                 Ok("d") => Some(Key::Right),
                 Ok(" ") => Some(Key::Space),
+                Ok("\x03") => Some(Key::CtrlC),
+                Ok("\x1b") => {
+                    let code = &mut [0u8; 2];
+                    match stdin.read(code) {
+                        Ok(_) => {
+                            match std::str::from_utf8(code) {
+                                Ok("[A") => Some(Key::Up),
+                                Ok("[B") => Some(Key::Down),
+                                Ok("[C") => Some(Key::Right),
+                                Ok("[D") => Some(Key::Left),
+                                _ => None
+                            }
+                        },
+                        Err(msg) => panic!(format!("could not read from standard in: {}", msg))
+                    }
+                },
                 Ok(n) => Some(Key::Char(n.chars().next().unwrap())),
                 _ => None
             }
@@ -421,7 +437,7 @@ fn main() {
         display.render();
 
         match get_input(stdin) {
-            Some(Key::Char('z')) => break,
+            Some(Key::Char('z')) | Some(Key::CtrlC) => break,
             Some(n) => game.keypress(n),
             _ => panic!("unrecognized key")
         }
