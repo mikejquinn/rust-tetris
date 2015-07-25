@@ -5,7 +5,6 @@ mod util;
 mod display;
 mod terminal;
 
-use std::fmt::{Formatter, Result};
 use display::Display;
 use util::*;
 
@@ -111,7 +110,6 @@ impl Board {
 }
 
 struct Piece {
-    name: &'static str,
     color: Color,
     shape: Vec<Vec<u8>>,
 }
@@ -119,7 +117,6 @@ struct Piece {
 impl Clone for Piece {
     fn clone(&self) -> Piece {
         let mut p = Piece{
-            name: self.name,
             color: self.color,
             shape: Vec::with_capacity(self.shape.len())
         };
@@ -133,7 +130,6 @@ impl Clone for Piece {
 impl Piece {
     pub fn new_o() -> Piece {
         Piece{
-            name: "I",
             color: Color::Cyan,
             shape: vec![vec![1, 1],
                         vec![1, 1]]
@@ -142,7 +138,6 @@ impl Piece {
 
     pub fn new_l() -> Piece {
         Piece{
-            name: "L",
             color: Color::Orange,
             shape: vec![vec![0, 0, 1],
                         vec![1, 1, 1],
@@ -152,7 +147,6 @@ impl Piece {
 
     pub fn new_j() -> Piece {
         Piece{
-            name: "J",
             color: Color::Blue,
             shape: vec![vec![1, 0, 0],
                         vec![1, 1, 1],
@@ -162,7 +156,6 @@ impl Piece {
 
     pub fn new_t() -> Piece {
         Piece{
-            name: "T",
             color: Color::Purple,
             shape: vec![vec![0, 1, 0],
                         vec![1, 1, 1],
@@ -172,7 +165,6 @@ impl Piece {
 
     pub fn new_s() -> Piece {
         Piece{
-            name: "S",
             color: Color::Green,
             shape: vec![vec![0, 1, 1],
                         vec![1, 1, 0],
@@ -182,7 +174,6 @@ impl Piece {
 
     pub fn new_z() -> Piece {
         Piece{
-            name: "Z",
             color: Color::Red,
             shape: vec![vec![1, 1, 0],
                         vec![0, 1, 1],
@@ -192,7 +183,6 @@ impl Piece {
 
     pub fn new_i() -> Piece {
         Piece{
-            name: "I",
             color: Color::Cyan,
             shape: vec![vec![0, 0, 0, 0],
                         vec![1, 1, 1, 1],
@@ -227,12 +217,12 @@ impl Piece {
     }
 }
 
-impl std::fmt::Display for Piece {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "Piece: {}", self.name)
-    }
-}
-
+/// Implements a queue of randomized tetrominoes.
+///
+/// Instead of a purely random stream of tetromino types, this queue generates a random ordering of all
+/// possible types and ensures all of those pieces are used before re-generating a new random set. This helps
+/// avoid pathological cases where purely random generation provides the same piece type repeately in a row,
+/// or fails to provide a required piece for a very long time.
 struct PieceBag {
     pieces: Vec<Piece>
 }
@@ -246,6 +236,7 @@ impl PieceBag {
         p
     }
 
+    /// Removes and returns the next piece in the queue.
     fn pop(&mut self) -> Piece {
         let piece = self.pieces.remove(0);
         if self.pieces.is_empty() {
@@ -254,10 +245,12 @@ impl PieceBag {
         piece
     }
 
+    /// Returns the next piece in the queue.
     fn peek(&self) -> &Piece {
         &self.pieces[0]
     }
 
+    /// Generates a random ordering of all possible pieces and adds them to the piece queue.
     fn fill_bag(&mut self) {
         use rand::Rng;
 
@@ -304,6 +297,7 @@ impl Game {
         game
     }
 
+    /// Returns the new position of the current piece if it were to be dropped.
     fn find_dropped_origin(&self) -> Point {
         let mut origin = self.piece_position;
         while !self.board.collision_test(&self.piece, origin) {
@@ -313,6 +307,7 @@ impl Game {
         origin
     }
 
+    /// Draws the game to the display.
     fn render(&self, display: &mut Display) {
         // Render the board
         self.board.render(display);
@@ -338,7 +333,8 @@ impl Game {
         }
     }
 
-    // Returns true if the piece could be moved
+    /// Moves the current piece in the specified direction. Returns true if the piece could be moved and
+    /// didn't collide.
     fn move_piece(&mut self, x: i32, y: i32) -> bool {
         let new_position = Point{
             x: self.piece_position.x + x,
@@ -352,7 +348,8 @@ impl Game {
         }
     }
 
-    // Returns true if the piece was rotated
+    /// Rotates the current piece in the specified direction. Returns true if the piece could be rotated
+    /// without any collisions.
     fn rotate_piece(&mut self, direction: Direction) -> bool {
         let mut new_piece = self.piece.clone();
         new_piece.rotate(direction);
@@ -365,7 +362,8 @@ impl Game {
         }
     }
 
-    // Returns true if the new piece could be placed
+    /// Positions the current piece at the top of the board. Returns true if the piece can be placed without
+    /// any collisions.
     fn place_new_piece(&mut self) -> bool {
         let origin = Point{
             x: ((BOARD_WIDTH - (self.piece.shape.len() as u32)) / 2) as i32,
@@ -379,8 +377,10 @@ impl Game {
         }
     }
 
-    // Returns true if we were able to advance a piece (if false, game over)
-    fn advance_piece(&mut self) -> bool {
+    /// Advances the game by moving the current piece down one step. If the piece cannot move down, the piece
+    /// is locked and the game is set up to drop the next piece.  Returns true if the game could be advanced,
+    /// false if the player has lost.
+    fn advance_game(&mut self) -> bool {
         if !self.move_piece(0, 1) {
             self.board.lock_piece(&self.piece, self.piece_position);
             self.board.clear_lines();
@@ -394,16 +394,18 @@ impl Game {
         true
     }
 
+    /// Drops the current piece to the lowest spot on the board where it fits without collisions and
+    /// advances the game.
     fn drop_piece(&mut self) -> bool {
         while self.move_piece(0, 1) {}
-        self.advance_piece()
+        self.advance_game()
     }
 
     fn keypress(&mut self, key: Key) {
         match key {
             Key::Left => self.move_piece(-1, 0),
             Key::Right => self.move_piece(1, 0),
-            Key::Down => self.advance_piece(),
+            Key::Down => self.advance_game(),
             Key::Up => self.rotate_piece(Direction::Left),
             Key::Space => self.drop_piece(),
             Key::Char('q') => self.rotate_piece(Direction::Left),
@@ -426,6 +428,7 @@ fn get_input(stdin: &mut std::io::Stdin) -> Option<Key> {
                 Ok("d") => Some(Key::Right),
                 Ok(" ") => Some(Key::Space),
                 Ok("\x03") => Some(Key::CtrlC),
+                // Escape sequence started - must read two more bytes.
                 Ok("\x1b") => {
                     let code = &mut [0u8; 2];
                     match stdin.read(code) {
