@@ -84,6 +84,30 @@ impl Board {
 
         false
     }
+
+    /// Clears the board of any complete lines, shifting down rows to take their place.
+    /// Returns the total number of lines that were cleared.
+    fn clear_lines(&mut self) -> u32 {
+        let mut cleared_lines: usize = 0;
+        for row in (0..self.cells.len()).rev() {
+            if (row as i32) - (cleared_lines as i32) < 0 {
+                break;
+            }
+
+            if cleared_lines > 0 {
+                self.cells[row] = self.cells[row - cleared_lines];
+                self.cells[row - cleared_lines] = [None; BOARD_WIDTH as usize];
+            }
+
+            while !self.cells[row].iter().any(|x| *x == None) {
+                cleared_lines += 1;
+                self.cells[row] = self.cells[row - cleared_lines];
+                self.cells[row - cleared_lines] = [None; BOARD_WIDTH as usize];
+            }
+        }
+
+        cleared_lines as u32
+    }
 }
 
 struct Piece {
@@ -359,6 +383,7 @@ impl Game {
     fn advance_piece(&mut self) -> bool {
         if !self.move_piece(0, 1) {
             self.board.lock_piece(&self.piece, self.piece_position);
+            self.board.clear_lines();
             self.piece = self.piece_bag.pop();
 
             if !self.place_new_piece() {
