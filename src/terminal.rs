@@ -1,5 +1,8 @@
 use libc::{c_ulong, c_int, c_uchar};
 
+// While this code is pretty generic, I've pulled much of this code from another Rust Tetris implementation:
+// https://github.com/jankes/tetris1/blob/master/tetris1.rs
+
 // Linux specifc termios structure definition
 //
 // Since we don't actually access any of the fields individually, and instead just
@@ -14,9 +17,9 @@ struct termios {
     c_oflag:  c_ulong,        // output flags
     c_cflag:  c_ulong,        // control flags
     c_lflag:  c_ulong,        // local flags
-    c_cc:    [c_uchar; 20],      // control chars
-    c_ispeed: c_ulong,       // input speed
-    c_ospeed: c_ulong,       // output speed
+    c_cc:    [c_uchar; 20],   // control chars
+    c_ispeed: c_ulong,        // input speed
+    c_ospeed: c_ulong,        // output speed
 }
 
 extern {
