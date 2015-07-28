@@ -6,6 +6,8 @@ mod display;
 mod terminal;
 
 use display::Display;
+use std::thread;
+use std::sync::mpsc;
 use util::*;
 
 const BOARD_WIDTH: u32 = 10;
@@ -20,6 +22,11 @@ enum Key {
     Space,
     CtrlC,
     Char(char),
+}
+
+enum GameUpdate {
+    KeyPress(Key),
+    Tick,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -413,6 +420,60 @@ impl Game {
             _ => false,
         };
     }
+
+
+    fn play(&mut self, display: &mut Display) {
+        let (tx_event, rx_event) = mpsc::channel();
+
+        // Spawn a thread which sends periodic game ticks to advance the piece
+        {
+            let tx_event = tx_event.clone();
+            thread::spawn(move || {
+                loop {
+                    thread::sleep_ms(500);
+                    tx_event.send(GameUpdate::Tick).unwrap();
+                };
+            });
+        }
+
+        // Spawn a thread which listens for keyboard input
+        {
+            let tx_event = tx_event.clone();
+            thread::spawn(move || {
+                let stdin = &mut std::io::stdin();
+
+                loop {
+                    match get_input(stdin) {
+                        Some(k) => tx_event.send(GameUpdate::KeyPress(k)).unwrap(),
+                        None => ()
+                    }
+                }
+            });
+        }
+
+        // Main game loop. The loop listens and responds to timer and keyboard updates received on a channel
+        // as sent by the threads spawned above.
+        loop {
+            display.clear_buffer();
+            self.render(display);
+            display.render();
+
+            match rx_event.recv() {
+                Ok(update) => {
+                    match update {
+                        GameUpdate::KeyPress(key) => {
+                            match key {
+                                Key::Char('z') | Key::CtrlC => break,
+                                k => { self.keypress(k); }
+                            };
+                        },
+                        GameUpdate::Tick => { self.advance_game(); }
+                    };
+                },
+                Err(err) => panic!(err)
+            }
+        }
+    }
 }
 
 fn get_input(stdin: &mut std::io::Stdin) -> Option<Key> {
@@ -455,19 +516,8 @@ fn get_input(stdin: &mut std::io::Stdin) -> Option<Key> {
 fn main() {
     let display = &mut Display::new(BOARD_WIDTH * 2 + 2, BOARD_HEIGHT + 2);
     let game = &mut Game::new();
-    let stdin = &mut std::io::stdin();
 
     let _restorer = terminal::set_terminal_raw_mode();
 
-    loop {
-        display.clear_buffer();
-        game.render(display);
-        display.render();
-
-        match get_input(stdin) {
-            Some(Key::Char('z')) | Some(Key::CtrlC) => break,
-            Some(n) => game.keypress(n),
-            _ => panic!("unrecognized key")
-        }
-    }
+    game.play(display);
 }
