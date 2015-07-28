@@ -5,7 +5,7 @@ const ESC: &'static str = "\x1b";
 
 #[derive(Debug)]
 struct Pixel {
-    c: &'static str,
+    c: char,
     fg_color: Color,
     bg_color: Color,
 }
@@ -20,7 +20,7 @@ impl Display {
         for _ in 0..height {
             let mut row = Vec::with_capacity(width as usize);
             for _ in 0..width {
-                row.push(Pixel{ c: " ", fg_color: Color::Black, bg_color: Color::Black });
+                row.push(Pixel{ c: ' ', fg_color: Color::Black, bg_color: Color::Black });
             }
             rows.push(row);
         }
@@ -51,7 +51,8 @@ impl Display {
                     self.set_bg_color(pixel.bg_color);
                  }
 
-                assert!(writer.write_all(pixel.c.as_bytes()).is_ok());
+                let bytes = [pixel.c as u8];
+                assert!(writer.write_all(&bytes).is_ok());
             }
             y += 1;
             self.set_cursor_pos(0, y);
@@ -60,12 +61,17 @@ impl Display {
         assert!(writer.flush().is_ok());
     }
 
-    pub fn set_pixel(&mut self, text: &'static str, x: u32, y: u32, fg_color: Color, bg_color: Color) {
+    pub fn set_text(&mut self, text: &'static str, x: u32, y: u32, fg_color: Color, bg_color: Color) {
         let row = &mut self.buffer[y as usize];
-        let cell = &mut row[x as usize];
-        cell.c = text;
-        cell.fg_color = fg_color;
-        cell.bg_color = bg_color;
+        let mut i = 0;
+
+        for c in text.chars() {
+            let cell = &mut row[(x + i) as usize];
+            cell.c = c;
+            cell.fg_color = fg_color;
+            cell.bg_color = bg_color;
+            i += 1;
+        }
     }
 
     pub fn clear_screen(&self) {
@@ -77,7 +83,7 @@ impl Display {
     pub fn clear_buffer(&mut self) {
         for row in 0..self.buffer.len() {
             for col in 0..self.buffer[row].len() {
-                self.buffer[row][col].c = " ";
+                self.buffer[row][col].c = ' ';
                 self.buffer[row][col].fg_color = Color::Black;
                 self.buffer[row][col].bg_color = Color::Black;
             }

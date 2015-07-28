@@ -42,19 +42,19 @@ struct Board {
 impl Board {
     pub fn render(&self, display: &mut Display) {
         for y in HIDDEN_ROWS..BOARD_HEIGHT {
-            display.set_pixel("|", 0, y, Color::Red, Color::Black);
-            display.set_pixel("|", BOARD_WIDTH * 2 + 1, y, Color::Red, Color::Black);
+            display.set_text("|", 0, y, Color::Red, Color::Black);
+            display.set_text("|", BOARD_WIDTH * 2 + 1, y, Color::Red, Color::Black);
         }
         for x in 0..(BOARD_WIDTH * 2 + 1) {
-            display.set_pixel("-", x, BOARD_HEIGHT, Color::Red, Color::Black);
+            display.set_text("-", x, BOARD_HEIGHT, Color::Red, Color::Black);
         }
         for row in 0..BOARD_HEIGHT {
             for col in 0..BOARD_WIDTH {
                 match self.cells[row as usize][col as usize] {
                     Some(color) => {
                         let c = 1 + (col * 2);
-                        display.set_pixel(" ", c, row, color, color);
-                        display.set_pixel(" ", c + 1, row, color, color);
+                        display.set_text(" ", c, row, color, color);
+                        display.set_text(" ", c + 1, row, color, color);
                     },
                     None => ()
                 }
@@ -324,6 +324,9 @@ impl Game {
         // Render a ghost piece
         let ghost_origin = self.find_dropped_origin();
 
+        // Render the level
+        display.set_text("Level: 1", BOARD_WIDTH * 2 + 5, 3, Color::Red, Color::Black);
+
         // Render the currently falling piece
         for row in 0..width {
             for col in 0..width {
@@ -331,10 +334,10 @@ impl Game {
                     let x = (1 + 2 * (self.piece_position.x + col)) as u32;
                     let y = (self.piece_position.y + row) as u32;
                     let ghost_y = (ghost_origin.y + row) as u32;
-                    display.set_pixel("*", x, ghost_y, self.piece.color, Color::Black);
-                    display.set_pixel("*", x + 1, ghost_y, self.piece.color, Color::Black);
-                    display.set_pixel(" ", x, y, self.piece.color, self.piece.color);
-                    display.set_pixel(" ", x + 1, y, self.piece.color, self.piece.color);
+                    display.set_text("*", x, ghost_y, self.piece.color, Color::Black);
+                    display.set_text("*", x + 1, ghost_y, self.piece.color, Color::Black);
+                    display.set_text(" ", x, y, self.piece.color, self.piece.color);
+                    display.set_text(" ", x + 1, y, self.piece.color, self.piece.color);
                 }
             }
         }
@@ -514,7 +517,7 @@ fn get_input(stdin: &mut std::io::Stdin) -> Option<Key> {
 }
 
 fn main() {
-    let display = &mut Display::new(BOARD_WIDTH * 2 + 2, BOARD_HEIGHT + 2);
+    let display = &mut Display::new(BOARD_WIDTH * 2 + 100, BOARD_HEIGHT + 2);
     let game = &mut Game::new();
 
     let _restorer = terminal::set_terminal_raw_mode();
