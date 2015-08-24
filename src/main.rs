@@ -63,32 +63,27 @@ impl Board {
     }
 
     pub fn lock_piece(&mut self, piece: &Piece, origin: Point) {
-        for row in 0..piece.shape.len() {
-            for col in 0..piece.shape[row].len() {
-                if piece.shape[row][col] == 1 {
-                    let x = origin.x + (col as i32);
-                    let y = origin.y + (row as i32);
-                    self.cells[y as usize][x as usize] = Some(piece.color);
-                }
-            }
-        }
+        piece.each_point(&mut |row, col| {
+            let x = origin.x + (col as i32);
+            let y = origin.y + (row as i32);
+            self.cells[y as usize][x as usize] = Some(piece.color);
+        });
     }
 
     pub fn collision_test(&self, piece: &Piece, origin: Point) -> bool {
-        for row in 0..piece.shape.len() {
-            for col in 0..piece.shape[row].len() {
-                if piece.shape[row][col] == 1 {
-                    let x = origin.x + (col as i32);
-                    let y = origin.y + (row as i32);
-                    if x < 0 || x >= (BOARD_WIDTH as i32) || y < 0 || y >= (BOARD_HEIGHT as i32) ||
-                       self.cells[y as usize][x as usize] != None {
-                        return true;
-                    }
+        let mut found = false;
+        piece.each_point(&mut |row, col| {
+            if !found {
+                let x = origin.x + col;
+                let y = origin.y + row;
+                if x < 0 || x >= (BOARD_WIDTH as i32) || y < 0 || y >= (BOARD_HEIGHT as i32) ||
+                    self.cells[y as usize][x as usize] != None {
+                  found = true;
                 }
             }
-        }
+        });
 
-        false
+        found
     }
 
     /// Clears the board of any complete lines, shifting down rows to take their place.
@@ -222,6 +217,17 @@ impl Piece {
             }
         }
     }
+
+    fn each_point(&self, callback: &mut FnMut(i32, i32)) {
+        let piece_width = self.shape.len() as i32;
+        for row in 0..piece_width {
+            for col in 0..piece_width {
+                if self.shape[row as usize][col as usize] != 0 {
+                    callback(row, col);
+                }
+            }
+        }
+    }
 }
 
 /// Implements a queue of randomized tetrominoes.
@@ -252,9 +258,12 @@ impl PieceBag {
         piece
     }
 
-    /// Returns the next piece in the queue.
-    fn peek(&self) -> &Piece {
-        &self.pieces[0]
+    /// Returns a copy of the next piece in the queue.
+    fn peek(&self) -> Piece {
+        match self.pieces.first() {
+            Some(p) => p.clone(),
+            None => panic!("No next piece in piece bag")
+        }
     }
 
     /// Generates a random ordering of all possible pieces and adds them to the piece queue.
@@ -305,7 +314,7 @@ impl Game {
     }
 
     /// Returns the new position of the current piece if it were to be dropped.
-    fn find_dropped_origin(&self) -> Point {
+    fn find_dropped_position(&self) -> Point {
         let mut origin = self.piece_position;
         while !self.board.collision_test(&self.piece, origin) {
             origin.y += 1;
@@ -319,28 +328,33 @@ impl Game {
         // Render the board
         self.board.render(display);
 
-        let width = self.piece.shape.len() as i32;
-
-        // Render a ghost piece
-        let ghost_origin = self.find_dropped_origin();
-
         // Render the level
-        display.set_text("Level: 1", BOARD_WIDTH * 2 + 5, 3, Color::Red, Color::Black);
+        let left_margin = BOARD_WIDTH * 2 + 5;
+        display.set_text("Level: 1", left_margin, 3, Color::Red, Color::Black);
 
         // Render the currently falling piece
-        for row in 0..width {
-            for col in 0..width {
-                if self.piece.shape[row as usize][col as usize] != 0 {
-                    let x = (1 + 2 * (self.piece_position.x + col)) as u32;
-                    let y = (self.piece_position.y + row) as u32;
-                    let ghost_y = (ghost_origin.y + row) as u32;
-                    display.set_text("*", x, ghost_y, self.piece.color, Color::Black);
-                    display.set_text("*", x + 1, ghost_y, self.piece.color, Color::Black);
-                    display.set_text(" ", x, y, self.piece.color, self.piece.color);
-                    display.set_text(" ", x + 1, y, self.piece.color, self.piece.color);
-                }
-            }
-        }
+        let x = 1 + (2 * self.piece_position.x);
+        self.render_piece(display, &self.piece, Point{ x: x, y: self.piece_position.y });
+
+        // Render a ghost piece
+        let ghost_position = self.find_dropped_position();
+        self.render_piece(display, &self.piece, Point{ x: x, y: ghost_position.y });
+
+        // Render the next piece
+        display.set_text("Next piece:", left_margin, 7, Color::Red, Color::Black);
+        let next_piece = self.piece_bag.peek();
+        self.render_piece(display, &next_piece, Point{ x: (left_margin as i32) + 2, y: 9 });
+    }
+
+    fn render_piece(&self, display: &mut Display, piece: &Piece, origin: Point) {
+        let color = piece.color;
+
+        piece.each_point(&mut |row, col| {
+            let x = (origin.x + 2 * col) as u32;
+            let y = (origin.y + row) as u32;
+            display.set_text(" ", x, y, color, color);
+            display.set_text(" ", x + 1, y, color, color);
+        });
     }
 
     /// Moves the current piece in the specified direction. Returns true if the piece could be moved and
