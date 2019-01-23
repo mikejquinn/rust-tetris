@@ -8,6 +8,7 @@ mod terminal;
 use display::Display;
 use std::thread;
 use std::sync::mpsc;
+use std::time::Duration;
 use util::*;
 
 const BOARD_WIDTH: u32 = 10;
@@ -447,7 +448,7 @@ impl Game {
             let tx_event = tx_event.clone();
             thread::spawn(move || {
                 loop {
-                    thread::sleep_ms(500);
+                    thread::sleep(Duration::from_millis(500));
                     tx_event.send(GameUpdate::Tick).unwrap();
                 };
             });

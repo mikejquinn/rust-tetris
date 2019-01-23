@@ -113,7 +113,6 @@ impl Display {
     fn get_color_code(&self, color: Color) -> i32 {
         match color {
             Color::Cyan => 44,
-            Color::Yellow => 11,
             Color::Purple => 90,
             Color::Green => 2,
             Color::Red => 9,

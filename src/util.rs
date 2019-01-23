@@ -2,7 +2,6 @@
 pub enum Color {
     Black,
     Cyan,
-    Yellow,
     Purple,
     Green,
     Red,
