@@ -47,3 +47,4 @@ There are still a few very small pieces I need to build before this is a feature
 * Scoring
 * Game levels with increasing difficulty
 * [Wall-kick](http://tetris.wikia.com/wiki/Wall_kick)
+* Game over
