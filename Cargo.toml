@@ -4,6 +4,6 @@ version = "0.0.1"
 authors = ["Michael Quinn <mikejquinn@gmail.com>"]
 
 [dependencies]
-libc = "0.1.8"
-rand = "0.3"
+libc = "0.2"
+rand = "0.8"
 
