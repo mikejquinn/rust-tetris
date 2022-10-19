@@ -219,7 +219,7 @@ impl Piece {
         }
     }
 
-    fn each_point(&self, callback: &mut FnMut(i32, i32)) {
+    fn each_point(&self, callback: &mut dyn FnMut(i32, i32)) {
         let piece_width = self.shape.len() as i32;
         for row in 0..piece_width {
             for col in 0..piece_width {
@@ -488,7 +488,7 @@ impl Game {
                         GameUpdate::Tick => { self.advance_game(); }
                     };
                 },
-                Err(err) => panic!(err)
+                Err(err) => panic!("{}", err)
             }
         }
     }
@@ -520,14 +520,14 @@ fn get_input(stdin: &mut std::io::Stdin) -> Option<Key> {
                                 _ => None
                             }
                         },
-                        Err(msg) => panic!(format!("could not read from standard in: {}", msg))
+                        Err(msg) => panic!("could not read from standard in: {}", msg)
                     }
                 },
                 Ok(n) => Some(Key::Char(n.chars().next().unwrap())),
                 _ => None
             }
         },
-        Err(msg) => panic!(format!("could not read from standard in: {}", msg))
+        Err(msg) => panic!("could not read from standard in: {}", msg)
     }
 }
 
