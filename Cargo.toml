@@ -2,6 +2,7 @@
 name = "tetris"
 version = "0.0.1"
 authors = ["Michael Quinn <mikejquinn@gmail.com>"]
+edition = "2021"
 
 [dependencies]
 libc = "0.2"
